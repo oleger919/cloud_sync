@@ -1,19 +1,65 @@
 import os
+import time
+from datetime import datetime, timezone
+
 from dotenv import load_dotenv
 from loguru import logger
 from yandex_cloud import YandexCloud
 
+
 class CloudSync:
     def __init__(self):
         self.load_env()
-        #logger.add(os.getenv('LOG_PATH'), level='DEBUG')
+        # logger.add(os.getenv('LOG_PATH'), level='DEBUG')
         self.yandex_cloud = YandexCloud()
-        # YandexCloud.load() # TODO сделать первоначальную выгрузку а потом уходить в цикл отслеживания
+        self.main_loop()
 
-        local_path = os.path.join(os.getenv("LOCAL_FOLDER"), "test.txt")
-        cloud_path = os.getenv("CLOUD_FOLDER") + "/test.txt"
-        self.yandex_cloud.load(local_path, cloud_path, token=os.getenv('API_TOKEN'))
-        # self.main_loop()
+    def compare_folders(self):
+        # создать словарь локальных файлов
+        try:
+            local_folder = os.getenv('LOCAL_FOLDER')
+            local_file_names = os.listdir(local_folder)
+            local_files = dict()
+            for file_name in local_file_names:
+                file_path = os.path.join(local_folder, file_name)
+                modification_time = os.path.getmtime(file_path)
+                local_files[file_name] = modification_time
+        except OSError as ex:
+            # TODO log error
+            print(ex)
+            return 0
+
+        # получить словарь облачных файлов
+        request_to_cloud = self.yandex_cloud.get_info(os.getenv('API_TOKEN'), os.getenv("CLOUD_FOLDER"))
+        cloud_files = dict()
+        for item in request_to_cloud['_embedded']['items']:
+            modification_time = datetime.fromisoformat(item['modified']).astimezone().timestamp()
+            cloud_files[item['name']] = modification_time
+
+        # сравнить словари в цикле и получить списки файлов для загрузки, перезалива и удаления
+        load_list = list()
+        reload_list = list()
+        delete_list = list()
+
+        for name, modification_time in local_files.items():
+            if name in cloud_files:
+                if cloud_files[name] != modification_time:
+                    reload_list.append(os.path.join(os.getenv('LOCAL_FOLDER'), name))
+                del cloud_files[name]
+            else:
+                load_list.append(os.path.join(os.getenv('LOCAL_FOLDER'), name))
+
+
+        if len(cloud_files) > 0:
+            delete_list = [key for key, value in cloud_files.items()]
+
+        # выполнить действия
+        # if delete_list:
+        #     self.yandex_cloud.delete(delete_list)
+        if load_list:
+            self.yandex_cloud.load(load_list)
+        if reload_list:
+            self.yandex_cloud.reload(reload_list)
 
     def load_env(self):
         dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -22,10 +68,8 @@ class CloudSync:
 
     def main_loop(self):
         while 1:
-            pass
-
-    def is_local_files_changed(self):
-        pass
+            self.compare_folders()
+            time.sleep(float(os.getenv('SYNC_PERIOD')))
 
 
 if __name__ == '__main__':
