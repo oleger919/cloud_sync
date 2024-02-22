@@ -4,29 +4,42 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 from loguru import logger
-from yandex_cloud import YandexCloud
+from yandex_disk import YandexDisk
+from typing import Dict
 
 
 class CloudSync:
-    def __init__(self):
+    """
+
+    """
+    def __init__(self) -> None:
         self.load_env()
         self.activate_logger()
-        self.yandex_cloud = YandexCloud(token=os.getenv('API_TOKEN'), cloud_path=os.getenv('CLOUD_FOLDER'))
+        self.cloud_module = YandexDisk(token=os.getenv('API_TOKEN'), cloud_path=os.getenv('CLOUD_FOLDER'))
         self.main_loop()
 
-    def load_env(self):
+    def load_env(self) -> None:
+        """
+        The method that initializes working with .env
+        """
         dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
         if os.path.exists(dotenv_path):
             load_dotenv(dotenv_path)
 
-    def activate_logger(self):
+    def activate_logger(self) -> None:
+        """
+        The method that activates logging
+        """
         log_file_path = os.path.join(os.getenv('LOG_PATH'), datetime.now().strftime('%d.%m.%Y') + '.log')
         logger.add(log_file_path,
                    format="CloudSync | {time:DD-MM-YYYY  HH:mm:ss} | {level} | {message}",
                    level='DEBUG')
         logger.info("Программа синхронизации файлов начинает работу с директорией {}".format(os.getenv('LOCAL_FOLDER')))
 
-    def main_loop(self):
+    def main_loop(self) -> None:
+        """
+        The method that performs the main synchronization loop.
+        """
         sleep_time = float(os.getenv('SYNC_PERIOD'))
         while 1:
             local_files = self.get_local_files()
@@ -34,8 +47,12 @@ class CloudSync:
             self.compare_folders(local_files, cloud_files)
             time.sleep(sleep_time)
 
-    def get_local_files(self):
-        # создать словарь локальных файлов
+    def get_local_files(self) -> Dict[str, str]:
+        """
+        The method that creates a dictionary of local files and their hash sums
+        :return: dictionary of local files and their hash sums
+        :rtype: Dict[str, str]
+        """
         try:
             local_folder = os.getenv('LOCAL_FOLDER')
             local_file_names = os.listdir(local_folder)
@@ -49,9 +66,13 @@ class CloudSync:
                 'Не удалось открыть директорию {}, проверьте файл конфигурации'.format(os.getenv('LOCAL_FOLDER')))
             return
 
-    def get_cloud_files(self):
-        # получить словарь облачных файлов
-        request_to_cloud = self.yandex_cloud.get_info()
+    def get_cloud_files(self) -> Dict[str, str]:
+        """
+        The method that creates requests a dictionary of cloud files and their hash sums
+        :return: dictionary of cloud files and their hash sums
+        :rtype: Dict[str, str]
+        """
+        request_to_cloud = self.cloud_module.get_info()
         if request_to_cloud is not None:
             cloud_files = dict()
             for item in request_to_cloud['_embedded']['items']:
@@ -60,8 +81,16 @@ class CloudSync:
         else:
             return
 
-    def compare_folders(self, local_files, cloud_files):
-        # сравнить словари в цикле и получить списки файлов для загрузки, перезалива и удаления
+    def compare_folders(self, local_files: Dict[str, str], cloud_files: Dict[str, str]) -> None:
+        """
+        The method that compares local and cloud files and accordingly calls load, reload,
+        or delete methods from cloud module
+
+        :param local_files: dictionary of local files
+        :type local_files: Dict[str, str]
+        :param cloud_files: dictionary of cloud files
+        :type cloud_files: Dict[str, str]
+        """
         load_list = list()
         reload_list = list()
         delete_list = list()
@@ -77,16 +106,22 @@ class CloudSync:
         if len(cloud_files) > 0:
             delete_list = [key for key, value in cloud_files.items()]
 
-        # выполнить действия
         if delete_list:
-            self.yandex_cloud.delete(delete_list)
+            self.cloud_module.delete(delete_list)
         if load_list:
-            self.yandex_cloud.load(load_list)
+            self.cloud_module.load(load_list)
         if reload_list:
-            self.yandex_cloud.reload(reload_list)
+            self.cloud_module.reload(reload_list)
 
-    def get_file_hash(self, file_path):
-        """Вычисляет хэш SHA-256 файла."""
+    def get_file_hash(self, file_path: str) -> str:
+        """
+        The method that calculates the sha-256 hash of a file
+
+        :param file_path: path to file
+        :type file_path: str
+        :return: sha-256 hash
+        :rtype: str
+        """
         sha256_hash = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):

@@ -2,24 +2,40 @@ import json
 import os
 import requests
 from loguru import logger
+from typing import Union, List
 
 
-class YandexCloud:
-    def __init__(self, token, cloud_path):
-        self.token = token
-        self.cloud_path = cloud_path
+class YandexDisk:
+    """
+    A class that implements methods for working with the Yandex disk API.
 
-    def load(self, path, overwrite=False):
+    Args:
+        token (str): pass a cloud storage access token
+        cloud_path (str): pass the path of the folder in the cloud storage
+    """
 
+    def __init__(self, token: str, cloud_path: str) -> None:
+        self.__token = token
+        self.__cloud_path = cloud_path
+
+    def load(self, path: Union[str, List[str]], overwrite: bool = False) -> None:
+        """
+        The method that uploads the file to Yandex disk
+
+        :param path: pass the path to the local file
+        :type path: str, List[str]
+        :param overwrite: indicates whether the file on the disk needs to be overwritten. True - overwriting is required
+        :type overwrite: bool
+        """
         if not isinstance(path, list):
             path = list(path)
 
         for item in path:
             url = "https://cloud-api.yandex.net/v1/disk/resources/upload"
             headers = {
-                "Authorization": f"OAuth {self.token}",
+                "Authorization": f"OAuth {self.__token}",
             }
-            cloud_filepath = self.cloud_path + '/' + os.path.basename(item)
+            cloud_filepath = self.__cloud_path + '/' + os.path.basename(item)
             params = {
                 "path": cloud_filepath,
                 "overwrite": overwrite,
@@ -43,10 +59,22 @@ class YandexCloud:
             except requests.exceptions.ConnectionError:
                 logger.error('Не удалось загрузить файл {} в облако. Ошибка соединения.'.format(item))
 
-    def reload(self, path):
+    def reload(self, path: Union[str, List[str]]) -> None:
+        """
+        The method that overwrites the file on Yandex disk
+
+       :param path: pass the path to the local file
+       :type path: str, List[str]
+       """
         self.load(path=path, overwrite=True)
 
-    def delete(self, filename):
+    def delete(self, filename: Union[str, List[str]]) -> None:
+        """
+        The method that deletes files on Yandex disk
+
+        :param filename: pass the names of files needs to be deleted
+        :type filename: str, List[str]
+        """
 
         if not isinstance(filename, list):
             filename = list(filename)
@@ -54,10 +82,10 @@ class YandexCloud:
         for item in filename:
             url = "https://cloud-api.yandex.net/v1/disk/resources"
             headers = {
-                "Authorization": f"OAuth {self.token}",
+                "Authorization": f"OAuth {self.__token}",
             }
             params = {
-                "path": '/'.join([self.cloud_path, item]),
+                "path": '/'.join([self.__cloud_path, item]),
             }
             try:
                 response = requests.delete(url, headers=headers, params=params)
@@ -72,12 +100,17 @@ class YandexCloud:
                 logger.error('Не удалось удалить файл из облака. Ошибка соединения.')
 
     def get_info(self):
+        """
+        The method for getting information about files on Yandex disk
+
+        :return: A dictionary with information about a file or folder in JSON format.
+        """
         url = "https://cloud-api.yandex.net/v1/disk/resources"
         headers = {
-            "Authorization": f"OAuth {self.token}",
+            "Authorization": f"OAuth {self.__token}",
         }
         params = {
-            "path": self.cloud_path,
+            "path": self.__cloud_path,
         }
         try:
             response = requests.get(url, headers=headers, params=params)
