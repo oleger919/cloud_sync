@@ -29,10 +29,12 @@ class CloudSync:
     def main_loop(self):
         sleep_time = float(os.getenv('SYNC_PERIOD'))
         while 1:
-            self.compare_folders()
+            local_files = self.get_local_files()
+            cloud_files = self.get_cloud_files()
+            self.compare_folders(local_files, cloud_files)
             time.sleep(sleep_time)
 
-    def compare_folders(self):
+    def get_local_files(self):
         # создать словарь локальных файлов
         try:
             local_folder = os.getenv('LOCAL_FOLDER')
@@ -41,20 +43,24 @@ class CloudSync:
             for file_name in local_file_names:
                 file_path = os.path.join(local_folder, file_name)
                 local_files[file_name] = self.get_file_hash(file_path)
+            return local_files
         except FileNotFoundError:
             logger.error(
                 'Не удалось открыть директорию {}, проверьте файл конфигурации'.format(os.getenv('LOCAL_FOLDER')))
             return
 
+    def get_cloud_files(self):
         # получить словарь облачных файлов
         request_to_cloud = self.yandex_cloud.get_info()
         if request_to_cloud is not None:
             cloud_files = dict()
             for item in request_to_cloud['_embedded']['items']:
                 cloud_files[item['name']] = item['sha256']
+            return cloud_files
         else:
             return
 
+    def compare_folders(self, local_files, cloud_files):
         # сравнить словари в цикле и получить списки файлов для загрузки, перезалива и удаления
         load_list = list()
         reload_list = list()
