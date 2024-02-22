@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 from loguru import logger
@@ -33,8 +34,10 @@ class YandexCloud:
                     if response.status_code == 201:
                         logger.info('Файл {} загружен в облако.'.format(item))
                     else:
+                        response_content = json.loads(response.content)
                         logger.error('Не удалось загрузить файл {file} в облако. '
-                                     'Код ошибки {error}.'.format(file=item, error=response.status_code))
+                                     'Код ошибки {error}: {message}'.format(file=item, error=response.status_code,
+                                                                            message=response_content['message']))
                 else:
                     print("Ошибка при выполнении запроса:", response.status_code)
             except requests.exceptions.ConnectionError:
@@ -61,8 +64,10 @@ class YandexCloud:
                 if response.status_code == 204:
                     logger.info('Файл {} удален из облака'.format(item))
                 else:
+                    response_content = json.loads(response.content)
                     logger.error('Не удалось удалить файл {file} из облака. '
-                                 'Код ошибки {error_code}'.format(file=item, error_code=response.status_code))
+                                 'Код ошибки {error_code}: {message}'.format(file=item, error_code=response.status_code,
+                                                                             message=response_content['message']))
             except requests.exceptions.ConnectionError:
                 logger.error('Не удалось удалить файл из облака. Ошибка соединения.')
 
@@ -79,6 +84,8 @@ class YandexCloud:
             if response.status_code == 200:
                 return response.json()
             else:
-                logger.error('Не удалось получить информацию из облака. Код ошибки {}'.format(response.status_code))
+                response_content = json.loads(response.content)
+                logger.error('Не удалось получить информацию из облака. Код ошибки {code}: {message}'.format(
+                    code=response.status_code, message=response_content['message']))
         except requests.exceptions.ConnectionError:
             logger.error('Не удалось получить информацию из облака.Ошибка соединения.')
