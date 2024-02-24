@@ -5,13 +5,14 @@ from datetime import datetime
 from dotenv import load_dotenv
 from loguru import logger
 from yandex_disk import YandexDisk
-from typing import Dict
+from typing import Dict, Optional
 
 
 class CloudSync:
     """
-
+    A class that provides a program for synchronizing a local folder with Yandex Disk.
     """
+
     def __init__(self) -> None:
         self.load_env()
         self.activate_logger()
@@ -25,6 +26,9 @@ class CloudSync:
         dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
         if os.path.exists(dotenv_path):
             load_dotenv(dotenv_path)
+        else:
+            logger.error('Отсутствует файл конфигурации .env, проверьте его наличие и настройки.')
+            exit()
 
     def activate_logger(self) -> None:
         """
@@ -59,14 +63,16 @@ class CloudSync:
             local_files = dict()
             for file_name in local_file_names:
                 file_path = os.path.join(local_folder, file_name)
-                local_files[file_name] = self.get_file_hash(file_path)
+                hash_sum = self.get_file_hash(file_path)
+                if hash_sum is not None:
+                    local_files[file_name] = hash_sum
             return local_files
         except FileNotFoundError:
             logger.error(
                 'Не удалось открыть директорию {}, проверьте файл конфигурации'.format(os.getenv('LOCAL_FOLDER')))
-            return
+            exit()
 
-    def get_cloud_files(self) -> Dict[str, str]:
+    def get_cloud_files(self) -> Optional[Dict[str, str]]:
         """
         The method that creates requests a dictionary of cloud files and their hash sums
         :return: dictionary of cloud files and their hash sums
@@ -79,7 +85,7 @@ class CloudSync:
                 cloud_files[item['name']] = item['sha256']
             return cloud_files
         else:
-            return
+            return None
 
     def compare_folders(self, local_files: Dict[str, str], cloud_files: Dict[str, str]) -> None:
         """
@@ -91,6 +97,9 @@ class CloudSync:
         :param cloud_files: dictionary of cloud files
         :type cloud_files: Dict[str, str]
         """
+        if not local_files or not cloud_files:
+            return
+
         load_list = list()
         reload_list = list()
         delete_list = list()
@@ -113,7 +122,7 @@ class CloudSync:
         if reload_list:
             self.cloud_module.reload(reload_list)
 
-    def get_file_hash(self, file_path: str) -> str:
+    def get_file_hash(self, file_path: str) -> Optional[str]:
         """
         The method that calculates the sha-256 hash of a file
 
@@ -123,10 +132,16 @@ class CloudSync:
         :rtype: str
         """
         sha256_hash = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                sha256_hash.update(chunk)
-        return sha256_hash.hexdigest()
+        try:
+            with open(file_path, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    sha256_hash.update(chunk)
+            return sha256_hash.hexdigest()
+        except PermissionError:
+            logger.error('Не удалось открыть файл {}. Ошибка разрешения доступа.'.format(file_path))
+            return None
+        except OSError:
+            logger.error('Не удалось открыть файл {}.'.format(file_path))
 
 
 if __name__ == '__main__':

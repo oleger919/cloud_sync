@@ -121,4 +121,5 @@ class YandexDisk:
                 logger.error('Не удалось получить информацию из облака. Код ошибки {code}: {message}'.format(
                     code=response.status_code, message=response_content['message']))
         except requests.exceptions.ConnectionError:
-            logger.error('Не удалось получить информацию из облака.Ошибка соединения.')
+            logger.error('Не удалось получить информацию из облака. Ошибка соединения.')
+            return None
