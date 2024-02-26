@@ -1,11 +1,19 @@
-import hashlib
 import os
-import time
+from hashlib import sha256
+from time import sleep
 from datetime import datetime
-from dotenv import load_dotenv
-from loguru import logger
-from yandex_disk import YandexDisk
 from typing import Dict, Optional
+
+try:
+    from dotenv import load_dotenv
+    from loguru import logger
+    from yandex_disk import YandexDisk
+except Exception as e:
+    print('Ошибка импорта: ', e)
+    print(
+        'Для установки необходимых модулей выполните команду: "pip install -r requirements.txt" из папки с программой')
+    sleep(15)
+    exit(1)
 
 
 class CloudSync:
@@ -49,7 +57,7 @@ class CloudSync:
             local_files = self.get_local_files()
             cloud_files = self.get_cloud_files()
             self.compare_folders(local_files, cloud_files)
-            time.sleep(sleep_time)
+            sleep(sleep_time)
 
     def get_local_files(self) -> Dict[str, str]:
         """
@@ -131,7 +139,7 @@ class CloudSync:
         :return: sha-256 hash
         :rtype: str
         """
-        sha256_hash = hashlib.sha256()
+        sha256_hash = sha256()
         try:
             with open(file_path, "rb") as f:
                 for chunk in iter(lambda: f.read(4096), b""):
