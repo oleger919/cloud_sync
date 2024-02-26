@@ -19,7 +19,7 @@
     CLOUD_FOLDER = 'sync_folder'  
      
     Токен доступа к API. При работе с Яндекс Диск, для получения токена, 
-    следуйте инструкции по [ссылке](https://yandex.ru/dev/disk-api/doc/ru/concepts/quickstart#oauth)
+    следуйте инструкции по ссылке ниже
     API_TOKEN = 'Your API token'  
     
     Частота синхронизации (в миллисекундах)
@@ -28,6 +28,9 @@
     Путь к директории для сохранения логов
     LOG_PATH = 'C:\Users\user\desktop'
    ```
+   [Ссылка](https://yandex.ru/dev/disk-api/doc/ru/concepts/quickstart#oauth) для получения токена Яндекс Диска
+
+
 4. После заполнения файла "sample.env", переименуйте его в ".env"
 
 ##### Установка необходимых пакетов
