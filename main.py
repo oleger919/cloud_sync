@@ -72,8 +72,7 @@ class CloudSync:
             for file_name in local_file_names:
                 file_path = os.path.join(local_folder, file_name)
                 hash_sum = self.get_file_hash(file_path)
-                if hash_sum is not None:
-                    local_files[file_name] = hash_sum
+                local_files[file_name] = hash_sum
             return local_files
         except FileNotFoundError:
             logger.error(
@@ -106,13 +105,16 @@ class CloudSync:
         :type cloud_files: Dict[str, str]
         """
 
+        if cloud_files is None or local_files is None:
+            return
+
         load_list = list()
         reload_list = list()
         delete_list = list()
 
         for name, hash_sum in local_files.items():
             if name in cloud_files:
-                if cloud_files[name] != hash_sum:
+                if cloud_files[name] != hash_sum and hash_sum is not None:
                     reload_list.append(os.path.join(os.getenv('LOCAL_FOLDER'), name))
                 del cloud_files[name]
             else:
