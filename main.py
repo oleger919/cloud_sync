@@ -105,8 +105,6 @@ class CloudSync:
         :param cloud_files: dictionary of cloud files
         :type cloud_files: Dict[str, str]
         """
-        if not local_files or not cloud_files:
-            return
 
         load_list = list()
         reload_list = list()
